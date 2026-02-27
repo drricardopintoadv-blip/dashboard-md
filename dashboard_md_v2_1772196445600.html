@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Aquisição de Material Didático</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #263248;
+    --border: #334155;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --blue: #3b82f6;
+    --blue-light: #60a5fa;
+    --orange: #f97316;
+    --orange-light: #fb923c;
+    --yellow: #eab308;
+    --yellow-light: #facc15;
+    --green: #22c55e;
+    --green-light: #4ade80;
+    --red: #ef4444;
+    --purple: #a855f7;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; font-size: 22px;
+  }
+  .header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .header p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .badge {
+    background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3);
+    color: var(--green); border-radius: 20px; padding: 4px 12px;
+    font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px;
+  }
+  .badge::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .last-update { font-size: 11px; color: var(--text-muted); }
+
+  /* FILTER BAR */
+  .filter-bar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 10px 28px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .filter-label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+  .filter-select {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 6px 12px; font-size: 12px; cursor: pointer; outline: none;
+  }
+  .filter-select:focus { border-color: var(--blue); }
+  .filter-btn {
+    background: var(--blue); border: none; color: #fff;
+    border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; font-weight: 600;
+  }
+  .filter-btn.reset {
+    background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+  }
+  .filter-btn.reset:hover { color: var(--text); border-color: var(--text-muted); }
+
+  /* LAYOUT */
+  .main { padding: 22px 28px; max-width: 1600px; margin: 0 auto; }
+
+  /* KPI CARDS */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 18px; }
+  .kpi-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px; position: relative; overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+  .kpi-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius: 14px 14px 0 0;
+  }
+  .kpi-card.blue::before   { background: linear-gradient(90deg, var(--blue), var(--purple)); }
+  .kpi-card.orange::before { background: linear-gradient(90deg, var(--orange), #f59e0b); }
+  .kpi-card.yellow::before { background: linear-gradient(90deg, var(--yellow), var(--orange)); }
+  .kpi-card.green::before  { background: linear-gradient(90deg, var(--green), #10b981); }
+
+  .kpi-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); }
+  .kpi-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .kpi-card.blue   .kpi-icon { background: rgba(59,130,246,0.15); }
+  .kpi-card.orange .kpi-icon { background: rgba(249,115,22,0.15); }
+  .kpi-card.yellow .kpi-icon { background: rgba(234,179,8,0.15); }
+  .kpi-card.green  .kpi-icon { background: rgba(34,197,94,0.15); }
+
+  .kpi-value { font-size: 40px; font-weight: 800; letter-spacing: -2px; line-height: 1; }
+  .kpi-card.blue   .kpi-value { color: var(--blue-light); }
+  .kpi-card.orange .kpi-value { color: var(--orange-light); }
+  .kpi-card.yellow .kpi-value { color: var(--yellow-light); }
+  .kpi-card.green  .kpi-value { color: var(--green-light); }
+
+  .kpi-sub { margin-top: 10px; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+  .kpi-sub strong { color: var(--text); }
+
+  .kpi-progress { margin-top: 12px; }
+  .progress-bar-bg { height: 5px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 3px; transition: width 1.8s cubic-bezier(0.4,0,0.2,1); width: 0%; }
+  .kpi-card.blue   .progress-bar-fill { background: linear-gradient(90deg, var(--blue), var(--purple)); }
+  .kpi-card.orange .progress-bar-fill { background: linear-gradient(90deg, var(--orange), #f59e0b); }
+  .kpi-card.yellow .progress-bar-fill { background: linear-gradient(90deg, var(--yellow), var(--orange)); }
+  .kpi-card.green  .progress-bar-fill { background: linear-gradient(90deg, var(--green), #10b981); }
+  .progress-pct { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* SECONDARY KPIs */
+  .sec-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .sec-kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  }
+  .sec-kpi-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .sec-kpi-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .sec-kpi-val { font-size: 24px; font-weight: 800; }
+  .sec-kpi-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* CHARTS */
+  .charts-row { display: grid; gap: 16px; margin-bottom: 18px; }
+  .charts-row-3  { grid-template-columns: 1fr 1fr 1fr; }
+  .charts-row-2  { grid-template-columns: 2fr 1fr; }
+  .charts-row-2b { grid-template-columns: 1fr 1fr; }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px;
+  }
+  .chart-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; display: flex; align-items: center; gap: 7px; }
+  .chart-subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 14px; }
+
+  /* FUNNEL */
+  .funnel-step { margin-bottom: 8px; }
+  .funnel-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .funnel-label { font-size: 12px; font-weight: 700; }
+  .funnel-val   { font-size: 14px; font-weight: 800; }
+  .funnel-pct   { font-size: 11px; color: var(--text-muted); }
+  .funnel-bar-bg { height: 34px; background: rgba(255,255,255,0.05); border-radius: 7px; overflow: hidden; }
+  .funnel-bar-fill {
+    height: 100%; border-radius: 7px; display: flex; align-items: center;
+    padding-left: 12px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.9);
+    transition: width 1.6s cubic-bezier(0.4,0,0.2,1); width: 0%;
+  }
+  .funnel-connector {
+    text-align: center; font-size: 10px; color: var(--text-muted);
+    margin: 1px 0 5px; display: flex; align-items: center; gap: 6px;
+  }
+  .funnel-connector::before, .funnel-connector::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  /* TABLE */
+  .table-wrapper { overflow-x: auto; max-height: 360px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    background: var(--surface2); color: var(--text-muted);
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+    padding: 8px 12px; text-align: left; position: sticky; top: 0; z-index: 1;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  tbody tr:hover td { background: rgba(255,255,255,0.025); }
+  .tag { display: inline-block; border-radius: 5px; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+  .tag-blue   { background: rgba(59,130,246,0.15); color: var(--blue-light); }
+  .tag-orange { background: rgba(249,115,22,0.15);  color: var(--orange-light); }
+  .tag-green  { background: rgba(34,197,94,0.15);   color: var(--green-light); }
+  .tag-yellow { background: rgba(234,179,8,0.15);   color: var(--yellow-light); }
+  .mini-bar-bg   { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .mini-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* STATUS LIST */
+  .status-list { display: flex; flex-direction: column; gap: 7px; max-height: 330px; overflow-y: auto; }
+  .status-row { display: flex; align-items: center; gap: 8px; }
+  .status-dot  { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-name { font-size: 11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+  .status-count { font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .status-mini  { flex: 0 0 56px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+  .tab { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 7px; padding: 5px 12px; font-size: 11px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+  .tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(2,1fr); }
+    .sec-kpi-row { grid-template-columns: repeat(2,1fr); }
+    .charts-row-3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .main { padding: 14px 12px; }
+    .header { padding: 12px 14px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .sec-kpi-row { grid-template-columns: 1fr 1fr; }
+    .charts-row-2,.charts-row-2b,.charts-row-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-icon">📚</div>
+    <div>
+      <h1>Dashboard — Aquisição de Material Didático</h1>
+      <p>Monitoramento de base trabalhada, produtividade e confirmações de pagamento</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="badge">Ao Vivo</div>
+    <div class="last-update">Última atualização: 26/02/2026</div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <span class="filter-label">🔍 Filtros:</span>
+  <select class="filter-select" id="filter-marca"  onchange="applyFilter()"><option value="">Todas as Marcas</option></select>
+  <select class="filter-select" id="filter-filial" onchange="applyFilter()"><option value="">Todas as Filiais</option></select>
+  <select class="filter-select" id="filter-turno"  onchange="applyFilter()"><option value="">Todos os Turnos</option></select>
+  <select class="filter-select" id="filter-grade"  onchange="applyFilter()"><option value="">Todas as Séries</option></select>
+  <button class="filter-btn reset" onclick="resetFilters()">↺ Limpar</button>
+</div>
+
+<div class="main">
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-header">
+        <div class="kpi-label">Base Total</div>
+        <div class="kpi-icon">👥</div>
+      </div>
+      <div class="kpi-value" id="kpi-total">0</div>
+      <div class="kpi-sub">Alunos/Responsáveis cadastrados</div>
+      <div class="kpi-progress">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:100%"></div></div>
+        <div class="progress-pct">Universo elegível para MD</div>
+      </div>
+    </div>
+
+    <div class="kpi-card orange">
+      <div class="kpi-header">
+        <div class="kpi-label">Base Trabalhada</div>
+        <div class="kpi-icon">📞</div>
+      </div>
+      <div class="kpi-value" id="kpi-trabalhada">0</div>
+      <div class="kpi-sub">Status ≠ Não Trabalhado | <strong id="kpi-trab-pct">0%</strong> da base</div>
+      <div class="kpi-progress">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-trab"></div></div>
+        <div class="progress-pct" id="lbl-trab-pct">0% da base total</div>
+      </div>
+    </div>
+
+    <div class="kpi-card yellow">
+      <div class="kpi-header">
+        <div class="kpi-label">Ctt Produtivo</div>
+        <div class="kpi-icon">✅</div>
+      </div>
+      <div class="kpi-value" id="kpi-produtivo">0</div>
+      <div class="kpi-sub">Col. L = "Ctt Produtivo" | <strong id="kpi-prod-pct">0%</strong> da trabalhada</div>
+      <div class="kpi-progress">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-prod"></div></div>
+        <div class="progress-pct" id="lbl-prod-pct">0% da base trabalhada</div>
+      </div>
+    </div>
+
+    <div class="kpi-card green">
+      <div class="kpi-header">
+        <div class="kpi-label">Afirmam ter Pago</div>
+        <div class="kpi-icon">💰</div>
+      </div>
+      <div class="kpi-value" id="kpi-pago">0</div>
+      <div class="kpi-sub">Col. M = "Alega ter feito a compra" | <strong id="kpi-pago-pct">0%</strong></div>
+      <div class="kpi-progress">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog-pago"></div></div>
+        <div class="progress-pct" id="lbl-pago-pct">0% da base total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECONDARY KPIs -->
+  <div class="sec-kpi-row">
+    <div class="sec-kpi">
+      <div class="sec-kpi-dot" style="background:#ef4444"></div>
+      <div>
+        <div class="sec-kpi-label">Pendentes</div>
+        <div class="sec-kpi-val" id="kpi-pendentes" style="color:#f87171">0</div>
+        <div class="sec-kpi-sub">Ainda não trabalhados</div>
+      </div>
+    </div>
+    <div class="sec-kpi">
+      <div class="sec-kpi-dot" style="background:#f97316"></div>
+      <div>
+        <div class="sec-kpi-label">Taxa de Cobertura</div>
+        <div class="sec-kpi-val" id="kpi-taxa-trab" style="color:#fb923c">0%</div>
+        <div class="sec-kpi-sub">Base Trabalhada / Total</div>
+      </div>
+    </div>
+    <div class="sec-kpi">
+      <div class="sec-kpi-dot" style="background:#eab308"></div>
+      <div>
+        <div class="sec-kpi-label">Taxa de Produtividade</div>
+        <div class="sec-kpi-val" id="kpi-taxa-prod" style="color:#facc15">0%</div>
+        <div class="sec-kpi-sub">Produtivos / Trabalhada</div>
+      </div>
+    </div>
+    <div class="sec-kpi">
+      <div class="sec-kpi-dot" style="background:#22c55e"></div>
+      <div>
+        <div class="sec-kpi-label">Taxa de Conversão</div>
+        <div class="sec-kpi-val" id="kpi-taxa-conv" style="color:#4ade80">0%</div>
+        <div class="sec-kpi-sub">Pagaram / Base Total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 1: Funil + Donut + Diário -->
+  <div class="charts-row charts-row-3">
+    <div class="chart-card">
+      <div class="chart-title">🔻 Funil de Conversão</div>
+      <div class="chart-subtitle">Base Total → Trabalhada → Produtivo → Pagaram</div>
+      <div id="funnel-container"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">🍩 Distribuição — Col. L</div>
+      <div class="chart-subtitle">Resultado de Chamada (Coluna L)</div>
+      <div style="height:230px;">
+        <canvas id="donutChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">📈 Evolução Diária</div>
+      <div class="chart-subtitle">Base trabalhada, produtivos e improdutivos por dia</div>
+      <div style="height:230px;">
+        <canvas id="lineChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: Filiais + Status -->
+  <div class="charts-row charts-row-2">
+    <div class="chart-card">
+      <div class="chart-title">🏫 Desempenho por Filial</div>
+      <div class="chart-subtitle">Filiais com base trabalhada > 0 (ord. por base trabalhada)</div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Filial</th>
+              <th>Total</th>
+              <th>Trabalhada</th>
+              <th>Produtivos</th>
+              <th>Pagaram</th>
+              <th>% Cobertura</th>
+            </tr>
+          </thead>
+          <tbody id="filial-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">📋 Status de Contato — Col. M</div>
+      <div class="chart-subtitle">Distribuição dos status (excl. Não Trabalhado)</div>
+      <div class="status-list" id="status-list"></div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Marca + Turno/Grade -->
+  <div class="charts-row charts-row-2b">
+    <div class="chart-card">
+      <div class="chart-title">🏷️ Desempenho por Marca</div>
+      <div class="chart-subtitle">Total, base trabalhada e produtivos por marca</div>
+      <div style="height:290px;">
+        <canvas id="marcaChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'panel-turno')">Por Turno</button>
+        <button class="tab" onclick="switchTab(this,'panel-grade')">Por Série</button>
+      </div>
+
+      <div class="tab-panel active" id="panel-turno">
+        <div class="chart-title">🌅 Por Turno</div>
+        <div class="chart-subtitle">Total, trabalhada e produtivos por turno</div>
+        <div style="height:230px;">
+          <canvas id="turnoChart"></canvas>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="panel-grade">
+        <div class="chart-title">🎓 Por Série / Ano</div>
+        <div class="chart-subtitle">Total de alunos e base trabalhada</div>
+        <div style="height:280px;">
+          <canvas id="gradeChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ===================== DATA =====================
+const DATA = {
+  kpis: {
+    total: 18854,
+    base_trabalhada: 1480,
+    base_trabalhada_pct: 7.8,
+    ctt_produtivo: 184,
+    ctt_produtivo_pct_trab: 12.4,
+    ctt_produtivo_pct_total: 1.0,
+    afirma_pago: 74,
+    afirma_pago_pct: 0.4,
+    pendentes: 17374
+  },
+  funnel: [
+    {label:"Base Total",      value:18854, color:"#3b82f6"},
+    {label:"Base Trabalhada", value:1480,  color:"#f97316"},
+    {label:"Ctt Produtivo",   value:184,   color:"#eab308"},
+    {label:"Afirmam ter Pago",value:74,    color:"#22c55e"}
+  ],
+  daily: [
+    {data:"24/02", trabalhada:187, produtivos:31,  improdutivos:135},
+    {data:"25/02", trabalhada:682, produtivos:92,  improdutivos:554},
+    {data:"26/02", trabalhada:4,   produtivos:0,   improdutivos:4}
+  ],
+  filial: [
+    {FILIAL:"Bangu",           total:1001, trabalhada:182, produtivos:16, pagaram:2},
+    {FILIAL:"Campo Grande",    total:923,  trabalhada:141, produtivos:18, pagaram:7},
+    {FILIAL:"Botafogo",        total:500,  trabalhada:116, produtivos:20, pagaram:7},
+    {FILIAL:"Madureira",       total:498,  trabalhada:106, produtivos:9,  pagaram:2},
+    {FILIAL:"Rocha Miranda",   total:754,  trabalhada:103, produtivos:9,  pagaram:2},
+    {FILIAL:"Taquara",         total:647,  trabalhada:98,  produtivos:12, pagaram:0},
+    {FILIAL:"Rio 2",           total:859,  trabalhada:83,  produtivos:14, pagaram:10},
+    {FILIAL:"Duque De Caxias", total:384,  trabalhada:75,  produtivos:6,  pagaram:0},
+    {FILIAL:"Nova Iguaçu",     total:381,  trabalhada:66,  produtivos:9,  pagaram:5},
+    {FILIAL:"São João De Meriti",total:493,trabalhada:62,  produtivos:8,  pagaram:3},
+    {FILIAL:"Tijuca",          total:730,  trabalhada:58,  produtivos:7,  pagaram:4},
+    {FILIAL:"Recreio",         total:363,  trabalhada:55,  produtivos:7,  pagaram:2},
+    {FILIAL:"Zona Sul",        total:474,  trabalhada:50,  produtivos:5,  pagaram:1},
+    {FILIAL:"Barra Golf",      total:353,  trabalhada:47,  produtivos:11, pagaram:8},
+    {FILIAL:"Santo Antônio I", total:724,  trabalhada:43,  produtivos:5,  pagaram:3},
+    {FILIAL:"Barra",           total:350,  trabalhada:42,  produtivos:7,  pagaram:1},
+    {FILIAL:"Península",       total:197,  trabalhada:40,  produtivos:8,  pagaram:4},
+    {FILIAL:"Barra Marapendi", total:168,  trabalhada:38,  produtivos:5,  pagaram:1}
+  ],
+  marca: [
+    {MARCA:"Matriz",           total:5867, trabalhada:925, produtivos:94, pagaram:21},
+    {MARCA:"APOGEU",           total:3889, trabalhada:1,   produtivos:0,  pagaram:0},
+    {MARCA:"Qi",               total:2709, trabalhada:109, produtivos:15, pagaram:7},
+    {MARCA:"CLV",              total:2037, trabalhada:0,   produtivos:0,  pagaram:0},
+    {MARCA:"Global Tree",      total:922,  trabalhada:260, produtivos:54, pagaram:36},
+    {MARCA:"Cubo Global School",total:915, trabalhada:82,  produtivos:12, pagaram:6},
+    {MARCA:"Sá Pereira",       total:704,  trabalhada:0,   produtivos:0,  pagaram:0},
+    {MARCA:"Sarah Dawsey",     total:573,  trabalhada:0,   produtivos:0,  pagaram:0},
+    {MARCA:"SAP",              total:563,  trabalhada:0,   produtivos:0,  pagaram:0},
+    {MARCA:"Americano",        total:494,  trabalhada:60,  produtivos:6,  pagaram:3},
+    {MARCA:"Unificado",        total:474,  trabalhada:36,  produtivos:2,  pagaram:1},
+    {MARCA:"União",            total:228,  trabalhada:15,  produtivos:2,  pagaram:0}
+  ],
+  status_breakdown: [
+    {status:"Caixa Postal",                                         count:1109},
+    {status:"Abandono",                                             count:76},
+    {status:"Alega ter feito a compra",                             count:74},
+    {status:"Irá finalizar a compra",                               count:63},
+    {status:"Número indisponível",                                  count:51},
+    {status:"Chamada recebida desconectada",                        count:41},
+    {status:"Não pretende comprar",                                 count:19},
+    {status:"Ligação Muda",                                         count:18},
+    {status:"Não tinha informação de MD",                           count:10},
+    {status:"Pediu para retornar",                                  count:5},
+    {status:"Tempo de finalização expirado",                        count:3},
+    {status:"Gostaria de parcelar em boleto",                       count:3},
+    {status:"Livros não utilizados",                                count:3},
+    {status:"Bolsista 100%",                                        count:2},
+    {status:"Não atendeu",                                          count:2},
+    {status:"Comprou por fora",                                     count:1},
+    {status:"Dificuldades ao comprar os livros",                    count:1},
+    {status:"Desligou após a identificação",                        count:1},
+    {status:"Coordenador informou que é o mesmo MD do ano passado", count:1},
+    {status:"Irá a secretaria",                                     count:1}
+  ],
+  turno: [
+    {TURNO:"Manhã",         total:13133, trabalhada:1041, produtivos:110},
+    {TURNO:"Tarde",         total:4783,  trabalhada:211,  produtivos:32},
+    {TURNO:"Semi-integral", total:915,   trabalhada:82,   produtivos:12},
+    {TURNO:"Integral",      total:507,   trabalhada:154,  produtivos:31},
+    {TURNO:"Noite",         total:37,    trabalhada:0,    produtivos:0}
+  ],
+  grade: [
+    {GRADE:"1ª Série",  total:2146, trabalhada:177, produtivos:18},
+    {GRADE:"2ª Série",  total:2050, trabalhada:251, produtivos:34},
+    {GRADE:"3ª Série",  total:1793, trabalhada:259, produtivos:27},
+    {GRADE:"9º Ano",    total:1642, trabalhada:93,  produtivos:12},
+    {GRADE:"6º Ano",    total:1566, trabalhada:64,  produtivos:8},
+    {GRADE:"8º Ano",    total:1563, trabalhada:66,  produtivos:7},
+    {GRADE:"7º Ano",    total:1556, trabalhada:58,  produtivos:6},
+    {GRADE:"Infantil",  total:1272, trabalhada:254, produtivos:51},
+    {GRADE:"5º Ano",    total:1246, trabalhada:36,  produtivos:5},
+    {GRADE:"3º Ano",    total:1048, trabalhada:36,  produtivos:3},
+    {GRADE:"2º Ano",    total:930,  trabalhada:27,  produtivos:2},
+    {GRADE:"4º Ano",    total:910,  trabalhada:29,  produtivos:3},
+    {GRADE:"1º Ano",    total:777,  trabalhada:21,  produtivos:3},
+    {GRADE:"Pré-Militar",total:275, trabalhada:88,  produtivos:3},
+    {GRADE:"Medicina",  total:188,  trabalhada:12,  produtivos:0},
+    {GRADE:"Berçário",  total:54,   trabalhada:17,  produtivos:3}
+  ],
+  donut: {nao_trabalhado:17887, improdutivo:1303, produtivo:185, pagaram:74}
+};
+
+// ===================== CHARTS =====================
+let charts = {};
+
+function animCount(el, target, dur=1300) {
+  const step = target / (dur/16);
+  let cur = 0;
+  const t = setInterval(() => {
+    cur = Math.min(cur+step, target);
+    el.textContent = Math.round(cur).toLocaleString('pt-BR');
+    if(cur >= target) clearInterval(t);
+  }, 16);
+}
+
+function renderKPIs(k) {
+  animCount(document.getElementById('kpi-total'),      k.total);
+  animCount(document.getElementById('kpi-trabalhada'), k.base_trabalhada);
+  animCount(document.getElementById('kpi-produtivo'),  k.ctt_produtivo);
+  animCount(document.getElementById('kpi-pago'),       k.afirma_pago);
+  animCount(document.getElementById('kpi-pendentes'),  k.pendentes);
+
+  document.getElementById('kpi-trab-pct').textContent  = k.base_trabalhada_pct + '%';
+  document.getElementById('kpi-prod-pct').textContent  = k.ctt_produtivo_pct_trab + '%';
+  document.getElementById('kpi-pago-pct').textContent  = k.afirma_pago_pct + '%';
+  document.getElementById('lbl-trab-pct').textContent  = k.base_trabalhada_pct + '% da base total';
+  document.getElementById('lbl-prod-pct').textContent  = k.ctt_produtivo_pct_trab + '% da base trabalhada';
+  document.getElementById('lbl-pago-pct').textContent  = k.afirma_pago_pct + '% da base total';
+  document.getElementById('kpi-taxa-trab').textContent = k.base_trabalhada_pct + '%';
+  document.getElementById('kpi-taxa-prod').textContent = k.ctt_produtivo_pct_trab + '%';
+  document.getElementById('kpi-taxa-conv').textContent = k.afirma_pago_pct + '%';
+
+  setTimeout(() => {
+    document.getElementById('prog-trab').style.width = Math.min(k.base_trabalhada_pct*4, 100) + '%';
+    document.getElementById('prog-prod').style.width = Math.min(k.ctt_produtivo_pct_trab*4, 100) + '%';
+    document.getElementById('prog-pago').style.width = Math.min(k.afirma_pago_pct*40, 100) + '%';
+  }, 300);
+}
+
+function renderFunnel(funnel) {
+  const c = document.getElementById('funnel-container');
+  c.innerHTML = '';
+  const maxV = funnel[0].value;
+  funnel.forEach((s,i) => {
+    const pct = +(s.value/maxV*100).toFixed(1);
+    const prev = i > 0 ? +(s.value/funnel[i-1].value*100).toFixed(1) : 100;
+    let html = '';
+    if(i > 0) html += `<div class="funnel-connector">▼ ${prev}% do estágio anterior</div>`;
+    html += `<div class="funnel-step">
+      <div class="funnel-label-row">
+        <span class="funnel-label" style="color:${s.color}">${s.label}</span>
+        <span><span class="funnel-val">${s.value.toLocaleString('pt-BR')}</span> <span class="funnel-pct">(${pct}%)</span></span>
+      </div>
+      <div class="funnel-bar-bg">
+        <div class="funnel-bar-fill" style="background:${s.color}" data-w="${pct}%">${s.value.toLocaleString('pt-BR')}</div>
+      </div>
+    </div>`;
+    c.insertAdjacentHTML('beforeend', html);
+  });
+  setTimeout(() => {
+    c.querySelectorAll('.funnel-bar-fill').forEach(el => el.style.width = el.dataset.w);
+  }, 200);
+}
+
+function renderDonut(d) {
+  if(charts.donut) charts.donut.destroy();
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  const total = d.nao_trabalhado + d.improdutivo + d.produtivo;
+  charts.donut = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Não Trabalhado','Ctt Improdutivo','Ctt Produtivo'],
+      datasets: [{
+        data: [d.nao_trabalhado, d.improdutivo, d.produtivo],
+        backgroundColor: ['#334155','#f97316','#eab308'],
+        borderColor: '#1e293b', borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true, cutout: '66%',
+      plugins: {
+        legend: { position:'bottom', labels:{color:'#94a3b8',font:{size:10},padding:10,boxWidth:10} },
+        tooltip: {
+          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString('pt-BR')} (${(ctx.raw/total*100).toFixed(1)}%)` }
+        }
+      }
+    }
+  });
+}
+
+function renderLine(daily) {
+  if(charts.line) charts.line.destroy();
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  charts.line = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: daily.map(d => d.data),
+      datasets: [
+        {label:'Base Trabalhada', data:daily.map(d=>d.trabalhada),   backgroundColor:'rgba(249,115,22,0.85)', borderRadius:6},
+        {label:'Ctt Produtivo',   data:daily.map(d=>d.produtivos),   backgroundColor:'rgba(234,179,8,0.9)',   borderRadius:6},
+        {label:'Ctt Improdutivo', data:daily.map(d=>d.improdutivos), backgroundColor:'rgba(59,130,246,0.5)',  borderRadius:6}
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:true,
+      plugins: { legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:10}} },
+      scales: {
+        x: {ticks:{color:'#64748b',font:{size:10}}, grid:{color:'rgba(255,255,255,0.04)'}},
+        y: {ticks:{color:'#64748b',font:{size:10}}, grid:{color:'rgba(255,255,255,0.06)'}}
+      }
+    }
+  });
+}
+
+function renderFilial(filial) {
+  const tbody = document.getElementById('filial-tbody');
+  const maxT = Math.max(...filial.map(f=>f.trabalhada));
+  tbody.innerHTML = filial.map((f,i) => {
+    const pct = f.total > 0 ? +(f.trabalhada/f.total*100).toFixed(1) : 0;
+    const bw = maxT > 0 ? +(f.trabalhada/maxT*100).toFixed(0) : 0;
+    const cor = pct>20?'#4ade80':pct>10?'#facc15':'#fb923c';
+    return `<tr>
+      <td style="color:var(--text-muted);font-size:10px">${i+1}</td>
+      <td><strong>${f.FILIAL}</strong></td>
+      <td><span class="tag tag-blue">${f.total.toLocaleString('pt-BR')}</span></td>
+      <td>
+        <span style="font-weight:700">${f.trabalhada}</span>
+        <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${bw}%;background:#f97316"></div></div>
+      </td>
+      <td><span class="tag tag-yellow">${f.produtivos}</span></td>
+      <td>${f.pagaram>0 ? `<span class="tag tag-green">${f.pagaram}</span>` : `<span style="color:#475569">—</span>`}</td>
+      <td><span style="color:${cor};font-weight:700">${pct}%</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStatusList(statuses) {
+  const list = document.getElementById('status-list');
+  const maxC = Math.max(...statuses.map(s=>s.count));
+  const colors = ['#f97316','#22c55e','#3b82f6','#eab308','#a855f7','#ec4899','#06b6d4',
+    '#f43f5e','#8b5cf6','#10b981','#f59e0b','#6366f1','#84cc16','#14b8a6','#fb923c',
+    '#e879f9','#38bdf8','#a3e635','#fb7185','#818cf8'];
+  list.innerHTML = statuses.map((s,i) => {
+    const bw = +(s.count/maxC*100).toFixed(0);
+    return `<div class="status-row">
+      <div class="status-dot" style="background:${colors[i%colors.length]}"></div>
+      <span class="status-name" title="${s.status}">${s.status}</span>
+      <div class="status-mini">
+        <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${bw}%;background:${colors[i%colors.length]}"></div></div>
+      </div>
+      <span class="status-count">${s.count}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderMarca(marca) {
+  if(charts.marca) charts.marca.destroy();
+  const ctx = document.getElementById('marcaChart').getContext('2d');
+  const filt = marca.filter(m=>m.total>0);
+  charts.marca = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels: filt.map(m=>m.MARCA),
+      datasets: [
+        {label:'Total',           data:filt.map(m=>m.total),     backgroundColor:'rgba(59,130,246,0.45)', borderRadius:4},
+        {label:'Base Trabalhada', data:filt.map(m=>m.trabalhada),backgroundColor:'rgba(249,115,22,0.85)', borderRadius:4},
+        {label:'Ctt Produtivo',   data:filt.map(m=>m.produtivos),backgroundColor:'rgba(234,179,8,0.95)',  borderRadius:4}
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:10}}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:9},maxRotation:35},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'rgba(255,255,255,0.06)'}}
+      }
+    }
+  });
+}
+
+function renderTurno(turno) {
+  if(charts.turno) charts.turno.destroy();
+  const ctx = document.getElementById('turnoChart').getContext('2d');
+  charts.turno = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels: turno.map(t=>t.TURNO),
+      datasets: [
+        {label:'Total',           data:turno.map(t=>t.total),     backgroundColor:'rgba(59,130,246,0.45)', borderRadius:5},
+        {label:'Base Trabalhada', data:turno.map(t=>t.trabalhada),backgroundColor:'rgba(249,115,22,0.85)', borderRadius:5},
+        {label:'Ctt Produtivo',   data:turno.map(t=>t.produtivos),backgroundColor:'rgba(234,179,8,0.95)',  borderRadius:5}
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:10}}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#64748b',font:{size:9}}, grid:{color:'rgba(255,255,255,0.06)'}}
+      }
+    }
+  });
+}
+
+function renderGrade(grade) {
+  if(charts.grade) charts.grade.destroy();
+  const ctx = document.getElementById('gradeChart').getContext('2d');
+  charts.grade = new Chart(ctx, {
+    type:'bar',
+    data: {
+      labels: grade.map(g=>g.GRADE),
+      datasets: [
+        {label:'Total',           data:grade.map(g=>g.total),     backgroundColor:'rgba(59,130,246,0.45)', borderRadius:4},
+        {label:'Base Trabalhada', data:grade.map(g=>g.trabalhada),backgroundColor:'rgba(249,115,22,0.85)', borderRadius:4}
+      ]
+    },
+    options: {
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:true,
+      plugins:{legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:10}}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:9}}, grid:{color:'rgba(255,255,255,0.06)'}},
+        y:{ticks:{color:'#94a3b8',font:{size:9}}, grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+// ===================== FILTERS =====================
+function populateFilters() {
+  const add = (id, arr, key) => {
+    const sel = document.getElementById(id);
+    [...new Set(arr.map(x=>x[key]))].forEach(v => {
+      sel.insertAdjacentHTML('beforeend',`<option value="${v}">${v}</option>`);
+    });
+  };
+  add('filter-marca',  DATA.marca,  'MARCA');
+  add('filter-filial', DATA.filial, 'FILIAL');
+  add('filter-turno',  DATA.turno,  'TURNO');
+  add('filter-grade',  DATA.grade,  'GRADE');
+}
+
+function applyFilter() {
+  const marca  = document.getElementById('filter-marca').value;
+  const filial = document.getElementById('filter-filial').value;
+  const turno  = document.getElementById('filter-turno').value;
+  const grade  = document.getElementById('filter-grade').value;
+
+  const fMarca  = marca  ? DATA.marca.filter(m=>m.MARCA===marca)   : DATA.marca;
+  const fFilial = filial ? DATA.filial.filter(f=>f.FILIAL===filial) : DATA.filial;
+  const fTurno  = turno  ? DATA.turno.filter(t=>t.TURNO===turno)   : DATA.turno;
+  const fGrade  = grade  ? DATA.grade.filter(g=>g.GRADE===grade)   : DATA.grade;
+
+  const tot  = fMarca.reduce((a,b)=>a+b.total,0)     || DATA.kpis.total;
+  const trab = fMarca.reduce((a,b)=>a+b.trabalhada,0)|| DATA.kpis.base_trabalhada;
+  const prod = fMarca.reduce((a,b)=>a+b.produtivos,0)|| DATA.kpis.ctt_produtivo;
+  const pago = fMarca.reduce((a,b)=>a+b.pagaram,0)   || DATA.kpis.afirma_pago;
+
+  renderKPIs({
+    total: tot, base_trabalhada: trab,
+    base_trabalhada_pct: tot?+(trab/tot*100).toFixed(1):0,
+    ctt_produtivo: prod,
+    ctt_produtivo_pct_trab: trab?+(prod/trab*100).toFixed(1):0,
+    ctt_produtivo_pct_total: tot?+(prod/tot*100).toFixed(1):0,
+    afirma_pago: pago,
+    afirma_pago_pct: tot?+(pago/tot*100).toFixed(1):0,
+    pendentes: tot - trab
+  });
+  renderFilial(fFilial);
+  renderMarca(fMarca);
+  renderTurno(fTurno);
+  renderGrade(fGrade);
+}
+
+function resetFilters() {
+  ['filter-marca','filter-filial','filter-turno','filter-grade'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  renderKPIs(DATA.kpis);
+  renderFunnel(DATA.funnel);
+  renderFilial(DATA.filial);
+  renderMarca(DATA.marca);
+  renderTurno(DATA.turno);
+  renderGrade(DATA.grade);
+}
+
+// ===================== TABS =====================
+function switchTab(btn, panelId) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+  setTimeout(() => {
+    if(panelId==='panel-turno') renderTurno(DATA.turno);
+    else renderGrade(DATA.grade);
+  }, 50);
+}
+
+// ===================== INIT =====================
+window.addEventListener('load', () => {
+  populateFilters();
+  renderKPIs(DATA.kpis);
+  renderFunnel(DATA.funnel);
+  renderDonut(DATA.donut);
+  renderLine(DATA.daily);
+  renderFilial(DATA.filial);
+  renderStatusList(DATA.status_breakdown);
+  renderMarca(DATA.marca);
+  renderTurno(DATA.turno);
+  renderGrade(DATA.grade);
+});
+</script>
+</body>
+</html>
